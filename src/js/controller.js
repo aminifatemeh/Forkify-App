@@ -24,7 +24,7 @@ const controlRecipes = async function(){
 
 
   }catch (err){
-    console.log(err)
+    console.log(error)
   }
 }
 
