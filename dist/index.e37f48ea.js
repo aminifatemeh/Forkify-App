@@ -637,8 +637,15 @@ const controlPagination = function(goToPage) {
     //2) render new pagination buttons
     (0, _paginationViewDefault.default).render(_modelJs.state.search);
 };
+const controlServings = function(newServings) {
+    // update the recipe servings (in state)
+    _modelJs.updateServings(newServings);
+    //update the recipe view
+    (0, _recipeViewJsDefault.default).update(_modelJs.state.recipe);
+};
 const init = function() {
     (0, _recipeViewJsDefault.default).addHandlerRender(controlRecipes);
+    (0, _recipeViewJsDefault.default).addHandlerUpdateServings(controlServings);
     (0, _searchViewJsDefault.default).addHandlerSearch(controlSearchResults);
     (0, _paginationViewDefault.default).addHandlerClick(controlPagination);
 };
@@ -2499,6 +2506,7 @@ parcelHelpers.export(exports, "state", ()=>state);
 parcelHelpers.export(exports, "loadRecipe", ()=>loadRecipe);
 parcelHelpers.export(exports, "loadSearchResults", ()=>loadSearchResults);
 parcelHelpers.export(exports, "getSearchResultsPage", ()=>getSearchResultsPage);
+parcelHelpers.export(exports, "updateServings", ()=>updateServings);
 var _regeneratorRuntime = require("regenerator-runtime");
 var _configJs = require("./config.js");
 var _helpers = require("./helpers");
@@ -2557,6 +2565,13 @@ const getSearchResultsPage = function(page = state.search.page) {
     ;
     return state.search.results.slice(start, end);
 };
+const updateServings = function(newServings) {
+    state.recipe.ingredients.forEach((ing)=>{
+        ing.quantity = ing.quantity * newServings / state.recipe.servings;
+    //newQt = oldQt * newServings / oldServings
+    });
+    state.recipe.servings = newServings;
+};
 
 },{"regenerator-runtime":"dXNgZ","@parcel/transformer-js/src/esmodule-helpers.js":"gkKU3","./config.js":"k5Hzs","./helpers":"hGI1E"}],"k5Hzs":[function(require,module,exports) {
 var parcelHelpers = require("@parcel/transformer-js/src/esmodule-helpers.js");
@@ -2612,6 +2627,14 @@ class RecipeView extends (0, _viewJsDefault.default) {
             "load"
         ].forEach((ev)=>window.addEventListener(ev, handler));
     }
+    addHandlerUpdateServings(handler) {
+        this._parentElement.addEventListener("click", function(e) {
+            const btn = e.target.closest(".btn--update-servings");
+            if (!btn) return;
+            const { updateTo } = btn.dataset;
+            if (+updateTo > 0) handler(+updateTo);
+        });
+    }
     _generateMarkup() {
         return ` <figure class="recipe__fig">
           <img src="${this._data.image}" alt="Tomato" class="recipe__img" />
@@ -2636,12 +2659,12 @@ class RecipeView extends (0, _viewJsDefault.default) {
             <span class="recipe__info-text">servings</span>
 
             <div class="recipe__info-buttons">
-              <button class="btn--tiny btn--increase-servings">
+              <button class="btn--tiny btn--increase-servings" data-update-to='${this._data.servings - 1}'>
                 <svg>
                   <use href="${0, _iconsSvgDefault.default}#icon-minus-circle"></use>
                 </svg>
               </button>
-              <button class="btn--tiny btn--increase-servings">
+              <button class="btn--tiny btn--increase-servings" data-update-to='${this._data.servings + 1}>
                 <svg>
                   <use href="${0, _iconsSvgDefault.default}#icon-plus-circle"></use>
                 </svg>
@@ -3008,6 +3031,20 @@ class View {
         const markup = this._generateMarkup();
         this._clear();
         this._parentElement.insertAdjacentHTML("afterbegin", markup);
+    }
+    update(data) {
+        this._data = data;
+        const newMarkup = this._generateMarkup();
+        const newDOM = document.createRange().createContextualFragment(newMarkup);
+        const newElements = Array.from(newDOM.querySelectorAll("*"));
+        const curElements = Array.from(this._parentElement.querySelectorAll("*"));
+        newElements.forEach((newEl, i)=>{
+            const curEl = curElements[i];
+            //update changed text
+            if (!newEl.isEqualNode(curEl) && newEl.firstChild.nodeValue.trim() !== "") curEl.textContent = newEl.textContent;
+            //update changed attributes
+            if (!newEl.isEqualNode(curEl)) Array.from(newEl.attributes).forEach((attr)=>curEl.setAttribute(attr.name, attr.value));
+        });
     }
     renderSpinner() {
         const markup = `
